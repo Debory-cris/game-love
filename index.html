@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💕 Para o meu amor</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            image-rendering: pixelated;
+        }
+
+        body {
+            background: #1a0a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+        }
+
+        #wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 0 10px;
+        }
+
+        #hud {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #2d0a2d;
+            border: 3px solid #ff3d8a;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 9px;
+        }
+
+        #hud .hearts-count {
+            color: #ff6bb5;
+        }
+
+        #hud .goal {
+            color: #ffd6ec;
+        }
+
+        #progress-bar-wrap {
+            width: 100%;
+            height: 14px;
+            background: #2d0a2d;
+            border: 3px solid #ff3d8a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff6bb5, #ff3d8a);
+            transition: width 0.2s;
+        }
+
+        #gameCanvas {
+            border: 4px solid #ff3d8a;
+            border-radius: 4px;
+            display: block;
+            box-shadow: 0 0 30px #ff3d8a55;
+            cursor: none;
+        }
+
+        /* SCREENS */
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            background: #1a0a1aee;
+            border-radius: 4px;
+            padding: 30px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .screen h1 {
+            font-size: 14px;
+            color: #ff6bb5;
+            line-height: 1.8;
+            text-shadow: 0 0 12px #ff3d8a;
+        }
+
+        .screen p {
+            font-size: 7px;
+            color: #ffd6ec;
+            line-height: 2;
+        }
+
+        .pixel-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 9px;
+            background: #ff3d8a;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 2px;
+            box-shadow: 0 4px 0 #99004d;
+            transition: transform 0.1s, box-shadow 0.1s;
+            margin-top: 8px;
+        }
+
+        .pixel-btn:hover {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #99004d;
+        }
+
+        .pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* WIN SCREEN */
+        #winScreen {
+            display: none;
+        }
+
+        #photo-frame {
+            width: 220px;
+            height: 180px;
+            border: 5px solid #ff3d8a;
+            background: #2d0a2d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        #photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+
+        .floating-hearts {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .fh {
+            position: absolute;
+            font-size: 18px;
+            animation: floatUp 4s ease-in forwards;
+            opacity: 0;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-10vh) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        #controls-hint {
+            font-size: 6px;
+            color: #7a3060;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="floating-hearts" id="floatingHearts"></div>
+
+    <div id="wrapper">
+        <div id="hud">
+            <span class="hearts-count">💕 <span id="scoreDisplay">0</span> corações</span>
+            <span class="goal">Meta: <span id="goalDisplay">20</span></span>
+        </div>
+
+        <div id="progress-bar-wrap">
+            <div id="progress-bar"></div>
+        </div>
+
+        <div style="position:relative; width:100%; max-width:480px; height:380px;">
+            <canvas id="gameCanvas" width="480" height="380"></canvas>
+
+            <!-- START SCREEN -->
+            <div class="screen" id="startScreen">
+                <h1>💕 Para o<br>meu amor 💕</h1>
+                <p>Colete todos os corações<br>que preparei para você!</p>
+                <p style="color:#7a3060;">Use as setas ou WASD<br>para mover</p>
+                <button class="pixel-btn" onclick="startGame()">▶ JOGAR</button>
+            </div>
+
+            <!-- WIN SCREEN -->
+            <div class="screen" id="winScreen">
+                <h1>💖 YAY! 💖</h1>
+                <div id="photo-frame">
+                    <img id="photo-img" src="we.jpeg" alt="Nossa Foto" style="display: block;">
+                </div>
+                <p id="love-message" style="color:#ff6bb5; font-size:7px; line-height:2.2;">
+                    Você coletou todos os<br>meus corações! 💕<br>Feliz Dia dos Namorados!
+                </p>
+                <button class="pixel-btn" onclick="restartGame()">↩ Jogar de novo</button>
+            </div>
+            <p id="controls-hint">← → ↑ ↓ &nbsp;|&nbsp; W A S D</p>
+        </div>
+
+        <script>
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const GOAL = 20;
+            const W = canvas.width;
+            const H = canvas.height;
+
+            let score = 0;
+            let running = false;
+            let hearts = [];
+            let particles = [];
+            let keys = {};
+            let animFrame;
+            let bgStars = [];
+
+            // ---- PLAYER ----
+            const player = {
+                x: W / 2, y: H / 2,
+                w: 24, h: 24,
+                speed: 3,
+                frame: 0,
+                frameTimer: 0,
+                dir: 0 // 0=down,1=up,2=left,3=right
+            };
+
+            // ---- PIXEL SPRITES ----
+            // Boy sprite - simple pixel art using rects
+            function drawPlayer(x, y, frame) {
+                const px = Math.floor(x - 12);
+                const py = Math.floor(y - 12);
+                const f = frame % 2;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath();
+                ctx.ellipse(px + 12, py + 26, 8, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Legs (animated)
+                ctx.fillStyle = '#4a3060';
+                if (f === 0) {
+                    ctx.fillRect(px + 7, py + 17, 5, 8);
+                    ctx.fillRect(px + 13, py + 17, 5, 8);
+                } else {
+                    ctx.fillRect(px + 6, py + 17, 5, 9);
+                    ctx.fillRect(px + 14, py + 17, 5, 7);
+                }
+
+                // Shoes
+                ctx.fillStyle = '#483D8B';
+                if (f === 0) {
+                    ctx.fillRect(px + 6, py + 24, 6, 3);
+                    ctx.fillRect(px + 13, py + 24, 6, 3);
+                } else {
+                    ctx.fillRect(px + 5, py + 25, 6, 3);
+                    ctx.fillRect(px + 14, py + 23, 6, 3);
+                }
+
+                // Body
+                ctx.fillStyle = '#4169E1';
+                ctx.fillRect(px + 6, py + 9, 13, 9);
+
+                // Heart on shirt
+                ctx.fillStyle = '#fff';
+                ctx.font = '7px serif';
+                ctx.fillText('♥', px + 9, py + 17);
+
+                // Neck
+                ctx.fillStyle = '#f5c5a0';
+                ctx.fillRect(px + 10, py + 7, 5, 4);
+
+                // Head
+                ctx.fillStyle = '#f5c5a0';
+                ctx.fillRect(px + 7, py + 1, 11, 9);
+
+                // Hair
+                ctx.fillStyle = '#3a1a10';
+                ctx.fillRect(px + 7, py + 1, 11, 4);
+                ctx.fillRect(px + 6, py + 3, 2, 3);
+                ctx.fillRect(px + 17, py + 3, 2, 3);
+
+                // Eyes
+                ctx.fillStyle = '#3a1a10';
+                ctx.fillRect(px + 9, py + 6, 2, 2);
+                ctx.fillRect(px + 14, py + 6, 2, 2);
+
+                // Smile
+                ctx.fillStyle = '#d44060';
+                ctx.fillRect(px + 10, py + 9, 5, 1);
+
+                // Arms (animated)
+                ctx.fillStyle = '#4169E1';
+                if (f === 0) {
+                    ctx.fillRect(px + 3, py + 10, 3, 6);
+                    ctx.fillRect(px + 19, py + 10, 3, 6);
+                } else {
+                    ctx.fillRect(px + 3, py + 9, 3, 6);
+                    ctx.fillRect(px + 19, py + 11, 3, 6);
+                }
+
+                // Hands
+                ctx.fillStyle = '#f5c5a0';
+                if (f === 0) {
+                    ctx.fillRect(px + 2, py + 15, 4, 3);
+                    ctx.fillRect(px + 19, py + 15, 4, 3);
+                } else {
+                    ctx.fillRect(px + 2, py + 14, 4, 3);
+                    ctx.fillRect(px + 19, py + 16, 4, 3);
+                }
+            }
+
+            // ---- HEART SPRITE ----
+            function drawHeart(x, y, scale = 1, alpha = 1, hue = 0) {
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(Math.floor(x), Math.floor(y));
+                ctx.scale(scale, scale);
+
+                // Pixel heart shape
+                const color = hue === 1 ? '#ff9dd6' : hue === 2 ? '#ff3d8a' : '#ff6bb5';
+                ctx.fillStyle = color;
+                // Row by row pixel heart
+                const heart = [
+                    [0, 1, 1, 0, 1, 1, 0],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [0, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 1, 1, 1, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 0],
+                ];
+                const s = 2;
+                const ox = -7, oy = -6;
+                heart.forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        if (cell) ctx.fillRect(ox + c * s, oy + r * s, s, s);
+                    });
+                });
+
+                ctx.restore();
+            }
+
+            // ---- STARS BG ----
+            function initStars() {
+                bgStars = [];
+                for (let i = 0; i < 60; i++) {
+                    bgStars.push({
+                        x: Math.random() * W,
+                        y: Math.random() * H,
+                        size: Math.random() < 0.3 ? 2 : 1,
+                        twinkle: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+
+            function drawBg(t) {
+                // Deep purple bg
+                ctx.fillStyle = '#1a0a1a';
+                ctx.fillRect(0, 0, W, H);
+
+                // Grid lines (subtle)
+                ctx.strokeStyle = 'rgba(255,61,138,0.06)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < W; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+                for (let y = 0; y < H; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+                // Stars
+                bgStars.forEach(s => {
+                    s.twinkle += 0.04;
+                    const a = 0.3 + 0.5 * Math.abs(Math.sin(s.twinkle));
+                    ctx.fillStyle = `rgba(255,180,220,${a})`;
+                    ctx.fillRect(s.x, s.y, s.size, s.size);
+                });
+            }
+
+            // ---- HEARTS SPAWNING ----
+            function spawnHeart() {
+                const margin = 30;
+                hearts.push({
+                    x: margin + Math.random() * (W - margin * 2),
+                    y: margin + Math.random() * (H - margin * 2),
+                    bobOffset: Math.random() * Math.PI * 2,
+                    type: Math.floor(Math.random() * 3),
+                    scale: 0.9 + Math.random() * 0.3,
+                    collected: false,
+                    collectAnim: 0
+                });
+            }
+
+            function spawnInitialHearts() {
+                hearts = [];
+                const count = Math.min(7, GOAL - score);
+                for (let i = 0; i < count; i++) spawnHeart();
+            }
+
+            // ---- PARTICLES ----
+            function spawnParticles(x, y) {
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * (1 + Math.random() * 2),
+                        vy: Math.sin(angle) * (1 + Math.random() * 2),
+                        life: 1,
+                        size: 4 + Math.random() * 4
+                    });
+                }
+            }
+
+            // ---- CONTROLS ----
+            window.addEventListener('keydown', e => { keys[e.key] = true; });
+            window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+            // Mobile touch / swipe
+            let touchStartX = 0, touchStartY = 0;
+            canvas.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', e => {
+                const dx = e.touches[0].clientX - touchStartX;
+                const dy = e.touches[0].clientY - touchStartY;
+                keys['ArrowLeft'] = dx < -10;
+                keys['ArrowRight'] = dx > 10;
+                keys['ArrowUp'] = dy < -10;
+                keys['ArrowDown'] = dy > 10;
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', () => {
+                keys['ArrowLeft'] = keys['ArrowRight'] = keys['ArrowUp'] = keys['ArrowDown'] = false;
+            });
+
+            // ---- GAME LOGIC ----
+            function update(t) {
+                // Movement
+                let dx = 0, dy = 0;
+                if (keys['ArrowLeft'] || keys['a'] || keys['A']) { dx = -1; player.dir = 2; }
+                if (keys['ArrowRight'] || keys['d'] || keys['D']) { dx = 1; player.dir = 3; }
+                if (keys['ArrowUp'] || keys['w'] || keys['W']) { dy = -1; player.dir = 1; }
+                if (keys['ArrowDown'] || keys['s'] || keys['S']) { dy = 1; player.dir = 0; }
+
+                if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+
+                player.x = Math.max(14, Math.min(W - 14, player.x + dx * player.speed));
+                player.y = Math.max(14, Math.min(H - 14, player.y + dy * player.speed));
+
+                // Animate walk
+                if (dx !== 0 || dy !== 0) {
+                    player.frameTimer++;
+                    if (player.frameTimer > 10) { player.frame++; player.frameTimer = 0; }
+                }
+
+                // Collect hearts
+                hearts.forEach(h => {
+                    if (h.collected) return;
+                    const dist = Math.hypot(h.x - player.x, h.y - player.y);
+                    if (dist < 20) {
+                        h.collected = true;
+                        score++;
+                        playCollectSound();
+                        spawnParticles(h.x, h.y);
+                        updateHUD();
+                        if (score >= GOAL) {
+                            setTimeout(showWin, 400);
+                        } else if (hearts.filter(hh => !hh.collected).length < 4) {
+                            spawnHeart();
+                        }
+                    }
+                });
+
+                // Particles
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy;
+                    p.vy += 0.08;
+                    p.life -= 0.04;
+                });
+                particles = particles.filter(p => p.life > 0);
+            }
+
+            function draw(t) {
+                drawBg(t);
+
+                // Draw hearts
+                hearts.forEach(h => {
+                    if (h.collected) return;
+                    const bob = Math.sin(t * 0.002 + h.bobOffset) * 3;
+                    drawHeart(h.x, h.y + bob, h.scale, 1, h.type);
+                });
+
+                // Particles
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = '#ff6bb5';
+                    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size * p.life, p.size * p.life);
+                    ctx.globalAlpha = 1;
+                });
+
+                // Player
+                drawPlayer(player.x, player.y, player.frame);
+            }
+
+            function gameLoop(t) {
+                if (!running) return;
+                update(t);
+                draw(t);
+                animFrame = requestAnimationFrame(gameLoop);
+            }
+
+            function updateHUD() {
+                document.getElementById('scoreDisplay').textContent = score;
+                document.getElementById('goalDisplay').textContent = GOAL;
+                document.getElementById('progress-bar').style.width = (score / GOAL * 100) + '%';
+            }
+
+            function startGame() {
+                document.getElementById('startScreen').style.display = 'none';
+                score = 0;
+                player.x = W / 2;
+                player.y = H / 2;
+                player.frame = 0;
+                particles = [];
+                updateHUD();
+                spawnInitialHearts();
+                initStars();
+                running = true;
+                requestAnimationFrame(gameLoop);
+            }
+
+            function restartGame() {
+                document.getElementById('winScreen').style.display = 'none';
+                const img = document.getElementById('photo-img');
+                const placeholder = document.getElementById('photo-placeholder');
+                // keep photo if already added
+                startGame();
+            }
+
+            function showWin() {
+                playWinSound();
+                running = false;
+                cancelAnimationFrame(animFrame);
+                document.getElementById('winScreen').style.display = 'flex';
+                launchFloatingHearts();
+            }
+
+            // ---- PHOTO UPLOAD ----
+            function loadPhoto(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = document.getElementById('photo-img');
+                    const placeholder = document.getElementById('photo-placeholder');
+                    img.src = ev.target.result;
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // ---- FLOATING HEARTS CELEBRATION ----
+            function launchFloatingHearts() {
+                const container = document.getElementById('floatingHearts');
+                container.innerHTML = '';
+                const emojis = ['💕', '💖', '💗', '💓', '💝', '💞', '🩷'];
+                for (let i = 0; i < 18; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'fh';
+                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    el.style.left = Math.random() * 100 + 'vw';
+                    el.style.animationDelay = Math.random() * 2 + 's';
+                    el.style.animationDuration = (3 + Math.random() * 2) + 's';
+                    el.style.fontSize = (14 + Math.random() * 20) + 'px';
+                    container.appendChild(el);
+                }
+                setTimeout(() => container.innerHTML = '', 6000);
+            }
+
+            // Init display
+            updateHUD();
+            initStars();
+
+            // Draw title screen background loop
+            let titleRunning = true;
+            function titleLoop(t) {
+                if (!titleRunning) return;
+                drawBg(t);
+                // decorative hearts on title
+                const positions = [{ x: 60, y: 80 }, { x: 420, y: 60 }, { x: 100, y: 300 }, { x: 380, y: 310 }, { x: 240, y: 340 }];
+                positions.forEach((p, i) => {
+                    const bob = Math.sin(t * 0.002 + i * 1.2) * 5;
+                    drawHeart(p.x, p.y + bob, 1.2, 0.6, i % 3);
+                });
+                if (document.getElementById('startScreen').style.display !== 'none') {
+                    requestAnimationFrame(titleLoop);
+                }
+            }
+
+            // ---- CONTROLE DE ÁUDIO (SOM DE 8-BITS) ----
+            function playCollectSound() {
+                // Cria o contexto de áudio
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Cria um oscilador (quem gera a onda sonora) e o ganho (volume)
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // Tipo de onda retrô (square ou triangle ficam bem 8-bits)
+                oscillator.type = 'square';
+
+                // Frequência inicial (um tom mais grave que sobe rápido, típico de coleta)
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // Nota Lá
+                oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // Sobe para o Lá mais agudo
+
+                // Controle do volume (faz o som sumir suavemente para não dar estalo)
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume em 10% para não assustar
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+
+                // Inicia e para o som bem rápido (0.12 segundos de duração)
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.12);
+            }
+
+            // ---- SOM DE VITÓRIA (FANFARRA 8-BITS) ----
+            function playWinSound() {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Função auxiliar para tocar uma nota individual
+                function playNote(frequency, startTime, duration, type = 'square') {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+
+                    oscillator.type = type;
+                    oscillator.frequency.setValueAtTime(frequency, startTime);
+
+                    gainNode.gain.setValueAtTime(0.08, startTime); // Volume controlado
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                }
+
+                const now = audioCtx.currentTime;
+
+                // Toca as notas em sequência (bip, bip, TADA!)
+                playNote(523.25, now, 0.1);        // Nota Dó (rápida)
+                playNote(659.25, now + 0.1, 0.1);  // Nota Mi (rápida)
+                playNote(783.99, now + 0.2, 0.4);  // Nota Sol (longa e alegre)
+                playNote(1046.50, now + 0.2, 0.4, 'triangle'); // Dó agudo em harmonia para encorpar o som
+            }
+
+            requestAnimationFrame(titleLoop);
+        </script>
+</body>
+
+</html>
