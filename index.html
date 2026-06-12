@@ -191,62 +191,42 @@
             text-align: center;
         }
 
-        /* JOYSTICK VIRTUAL */
+        /* JOYSTICK VIRTUAL — arrastar */
         #joystick-zone {
             display: none;
             width: 100%;
             justify-content: center;
-            padding: 6px 0;
+            padding: 8px 0 2px;
         }
 
-        #joystick-pad {
-            position: relative;
+        #joystick-base {
             width: 110px;
             height: 110px;
-        }
-
-        .joy-btn {
-            position: absolute;
-            width: 36px;
-            height: 36px;
-            background: #ff3d8a33;
-            border: 2px solid #ff6bb5;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ff6bb5;
-            font-size: 15px;
+            background: #ff3d8a18;
+            border: 2px solid #ff6bb566;
+            border-radius: 50%;
+            position: relative;
+            touch-action: none;
             user-select: none;
             -webkit-user-select: none;
         }
 
-        .joy-btn.active {
-            background: #ff3d8a88;
-        }
-
-        #joy-up {
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        #joy-down {
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        #joy-left {
-            left: 0;
+        #joystick-thumb {
+            width: 46px;
+            height: 46px;
+            background: radial-gradient(circle at 35% 35%, #ff9dd6, #ff3d8a);
+            border-radius: 50%;
+            position: absolute;
             top: 50%;
-            transform: translateY(-50%);
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 12px #ff3d8a88;
+            pointer-events: none;
+            transition: box-shadow 0.1s;
         }
 
-        #joy-right {
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
+        #joystick-base.active #joystick-thumb {
+            box-shadow: 0 0 20px #ff3d8a;
         }
 
         @media (hover: none) and (pointer: coarse) {
@@ -298,11 +278,8 @@
         </div>
 
         <div id="joystick-zone">
-            <div id="joystick-pad">
-                <div class="joy-btn" id="joy-up">▲</div>
-                <div class="joy-btn" id="joy-left">◀</div>
-                <div class="joy-btn" id="joy-right">▶</div>
-                <div class="joy-btn" id="joy-down">▼</div>
+            <div id="joystick-base">
+                <div id="joystick-thumb"></div>
             </div>
         </div>
 
@@ -322,19 +299,50 @@
 
         const player = { x: W / 2, y: H / 2, speed: 3, frame: 0, frameTimer: 0, dir: 0 };
 
-        // JOYSTICK
-        const joyMap = { 'joy-up': 'ArrowUp', 'joy-down': 'ArrowDown', 'joy-left': 'ArrowLeft', 'joy-right': 'ArrowRight' };
-        Object.entries(joyMap).forEach(([id, key]) => {
-            const el = document.getElementById(id);
-            const press = () => { keys[key] = true; el.classList.add('active'); };
-            const release = () => { keys[key] = false; el.classList.remove('active'); };
-            el.addEventListener('touchstart', e => { e.preventDefault(); press(); }, { passive: false });
-            el.addEventListener('touchend', e => { e.preventDefault(); release(); }, { passive: false });
-            el.addEventListener('touchcancel', e => { e.preventDefault(); release(); }, { passive: false });
-            el.addEventListener('mousedown', press);
-            el.addEventListener('mouseup', release);
-            el.addEventListener('mouseleave', release);
-        });
+        // JOYSTICK ARRASTAR
+        const joyBase = document.getElementById('joystick-base');
+        const joyThumb = document.getElementById('joystick-thumb');
+        const JOY_RADIUS = 32; // quanto pode arrastar antes de travar
+        const JOY_DEAD = 8;  // zona morta central
+
+        function joyMove(cx, cy) {
+            const rect = joyBase.getBoundingClientRect();
+            const ox = rect.left + rect.width / 2;
+            const oy = rect.top + rect.height / 2;
+            let dx = cx - ox;
+            let dy = cy - oy;
+            const dist = Math.hypot(dx, dy);
+
+            // Limita o thumb ao raio visual
+            if (dist > JOY_RADIUS) { dx = dx / dist * JOY_RADIUS; dy = dy / dist * JOY_RADIUS; }
+            joyThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+            // Atualiza direções com zona morta
+            keys['ArrowLeft'] = dx < -JOY_DEAD;
+            keys['ArrowRight'] = dx > JOY_DEAD;
+            keys['ArrowUp'] = dy < -JOY_DEAD;
+            keys['ArrowDown'] = dy > JOY_DEAD;
+        }
+
+        function joyReset() {
+            joyThumb.style.transform = 'translate(-50%, -50%)';
+            keys['ArrowLeft'] = keys['ArrowRight'] = keys['ArrowUp'] = keys['ArrowDown'] = false;
+            joyBase.classList.remove('active');
+        }
+
+        joyBase.addEventListener('touchstart', e => {
+            e.preventDefault();
+            joyBase.classList.add('active');
+            joyMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        joyBase.addEventListener('touchmove', e => {
+            e.preventDefault();
+            joyMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        joyBase.addEventListener('touchend', e => { e.preventDefault(); joyReset(); }, { passive: false });
+        joyBase.addEventListener('touchcancel', e => { e.preventDefault(); joyReset(); }, { passive: false });
 
         window.addEventListener('keydown', e => { keys[e.key] = true; });
         window.addEventListener('keyup', e => { keys[e.key] = false; });
